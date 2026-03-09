@@ -234,6 +234,7 @@ export default class LinterTool implements ToolInterface {
       return undefined;
     }
     await this.client.stop();
+    await this.client.dispose();
     this.client = undefined;
   }
 
