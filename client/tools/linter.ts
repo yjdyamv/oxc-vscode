@@ -3,7 +3,6 @@ import { promises as fsPromises } from "node:fs";
 import {
   commands,
   ConfigurationChangeEvent,
-  ExtensionContext,
   LogOutputChannel,
   Uri,
   window,
@@ -67,7 +66,6 @@ export default class LinterTool implements ToolInterface {
   }
 
   async activate(
-    context: ExtensionContext,
     outputChannel: LogOutputChannel,
     configService: ConfigService,
     statusBarItemHandler: StatusBarItemHandler,
@@ -241,10 +239,11 @@ export default class LinterTool implements ToolInterface {
   }
 
   async deactivate(): Promise<void> {
-    if (!this.client) {
-      return;
+    try {
+      await this.client?.stop();
+    } catch {
+      // do nothing, the client may already be stopped
     }
-    await this.client.stop();
     await this.disposeResources?.();
     this.disposeResources = undefined;
     this.client = undefined;

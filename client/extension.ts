@@ -1,4 +1,4 @@
-import { commands, ExtensionContext, window, workspace } from "vscode";
+import { commands, ExtensionContext, LogOutputChannel, window, workspace } from "vscode";
 
 import { OxcCommands } from "./commands";
 import { ConfigService } from "./ConfigService";
@@ -59,10 +59,40 @@ export async function activate(context: ExtensionContext) {
     statusBarItemHandler,
   );
 
+  const restartTool = async (tool: ToolInterface, outputChannel: LogOutputChannel) => {
+    try {
+      await tool.deactivate();
+      const newBinaryPath = await tool.getBinary(outputChannel, configService);
+      await tool.activate(outputChannel, configService, statusBarItemHandler, newBinaryPath);
+    } catch (e) {
+      outputChannel.error(`Failed to restart tool, error: ${e instanceof Error ? e.message : String(e)}.
+      Try to restart the editor manually.
+      `);
+    }
+  };
+
   configService.onConfigChange = async function onConfigChange(event) {
     await Promise.all(
       tools.map((tool) => tool.onConfigChange(event, configService, statusBarItemHandler)),
     );
+
+    if (configService.vsCodeConfig.effectsOxlintConnection(event)) {
+      outputChannelLint.info("oxlint connection changed, restarting oxlint tool.");
+
+      const linterTool = tools.find((tool) => tool instanceof Linter);
+      if (linterTool) {
+        await restartTool(linterTool, outputChannelLint);
+      }
+    }
+
+    if (configService.vsCodeConfig.effectsOxfmtConnection(event)) {
+      outputChannelFormat.info("oxfmt connection changed, restarting oxfmt tool.");
+
+      const formatterTool = tools.find((tool) => tool instanceof Formatter);
+      if (formatterTool) {
+        await restartTool(formatterTool, outputChannelFormat);
+      }
+    }
   };
 
   outputChannelFormat.info("Searching for oxfmt binary.");
@@ -82,7 +112,7 @@ export async function activate(context: ExtensionContext) {
       const channel = tool instanceof Linter ? outputChannelLint : outputChannelFormat;
       const binaryPath = binaryPaths[tools.indexOf(tool)];
 
-      return tool.activate(context, channel, configService, statusBarItemHandler, binaryPath);
+      return tool.activate(channel, configService, statusBarItemHandler, binaryPath);
     }),
   );
 
