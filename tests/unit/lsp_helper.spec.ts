@@ -17,7 +17,8 @@ suite("runExecutable", () => {
       loader: "node",
     });
 
-    strictEqual(result.command, "node");
+    const expectedCommand = process.platform === "win32" ? process.execPath : "node";
+    strictEqual(result.command, expectedCommand);
     strictEqual(result.args?.[0], "/path/to/server.js");
     strictEqual(result.args?.[1], "--lsp");
   });
@@ -28,7 +29,8 @@ suite("runExecutable", () => {
       loader: "node",
     });
 
-    strictEqual(result.command, "node");
+    const expectedCommand = process.platform === "win32" ? process.execPath : "node";
+    strictEqual(result.command, expectedCommand);
     strictEqual(result.args?.[0], "/path/to/server.cjs");
     strictEqual(result.args?.[1], "--lsp");
   });
@@ -39,7 +41,8 @@ suite("runExecutable", () => {
       loader: "node",
     });
 
-    strictEqual(result.command, "node");
+    const expectedCommand = process.platform === "win32" ? process.execPath : "node";
+    strictEqual(result.command, expectedCommand);
     strictEqual(result.args?.[0], "/path/to/server.mjs");
     strictEqual(result.args?.[1], "--lsp");
   });
@@ -127,7 +130,7 @@ suite("runExecutable", () => {
     strictEqual(result.options?.env?.ELECTRON_RUN_AS_NODE, "1");
   });
 
-  test("should not set ELECTRON_RUN_AS_NODE server env", () => {
+  test("should not set ELECTRON_RUN_AS_NODE server env (except on Windows)", () => {
     const result = runExecutable(
       {
         path: "/path/to/server.js",
@@ -135,7 +138,9 @@ suite("runExecutable", () => {
       },
       false,
     );
-    strictEqual(result.options?.env?.ELECTRON_RUN_AS_NODE, undefined);
+    // On Windows, the extension uses Electron's Node.js as fallback, which sets this env var
+    const expectedElectronRunAsNode = process.platform === "win32" ? "1" : undefined;
+    strictEqual(result.options?.env?.ELECTRON_RUN_AS_NODE, expectedElectronRunAsNode);
   });
 
   test("should set yarn PnP loader path when provided", () => {

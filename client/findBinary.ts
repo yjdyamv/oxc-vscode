@@ -36,6 +36,23 @@ export function replaceTargetFromMainToBin(resolvedPath: string, binaryName: str
   throw new Error(`Could not find package.json for "${binaryName}"`);
 }
 
+function resolveBinEntryFromNodeModulesBin(
+  binPath: string,
+  binaryName: string,
+): string | undefined {
+  try {
+    const dir = path.dirname(binPath);
+    const pkgDir = path.join(path.dirname(dir), binaryName);
+    const pkgJson = JSON.parse(readFileSync(path.join(pkgDir, "package.json"), "utf8"));
+    const binEntry =
+      typeof pkgJson.bin === "string" ? pkgJson.bin : pkgJson.bin?.[binaryName];
+    if (binEntry) {
+      return path.resolve(pkgDir, binEntry);
+    }
+  } catch {}
+  return undefined;
+}
+
 async function searchNodeModulesDefaultBinPath(
   binaryName: string,
   folders: string[],
@@ -61,7 +78,16 @@ async function searchNodeModulesDefaultBinPath(
     return undefined;
   }
 
-  return { path: candidates[firstExistingCandidateIndex], loader: "native" };
+  const candidatePath = candidates[firstExistingCandidateIndex];
+
+  if (process.platform === "win32") {
+    const resolved = resolveBinEntryFromNodeModulesBin(candidatePath, binaryName);
+    if (resolved) {
+      return { path: resolved, loader: "node" };
+    }
+  }
+
+  return { path: candidatePath, loader: "native" };
 }
 /**
  * Returns node_modules paths derived from all package.json files found in the workspace.

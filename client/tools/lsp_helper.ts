@@ -32,8 +32,14 @@ export function runExecutable(
   if (useExecPath) {
     nodeCommand = process.execPath || nodePath || "node";
     serverEnv.ELECTRON_RUN_AS_NODE = "1";
+  } else if (nodePath) {
+    nodeCommand = nodePath;
+    delete serverEnv.ELECTRON_RUN_AS_NODE;
+  } else if (process.platform === "win32") {
+    nodeCommand = process.execPath;
+    serverEnv.ELECTRON_RUN_AS_NODE = "1";
   } else {
-    nodeCommand = nodePath || "node";
+    nodeCommand = "node";
     delete serverEnv.ELECTRON_RUN_AS_NODE;
   }
 
